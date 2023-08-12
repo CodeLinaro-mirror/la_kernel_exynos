@@ -406,9 +406,9 @@ static int kbase_open(struct inode *inode, struct file *filp)
 		return -ENODEV;
 
 #if (KERNEL_VERSION(4, 6, 0) <= LINUX_VERSION_CODE)
-	kctx = kbase_create_context(kbdev, in_compat_syscall());
+	kctx = kbase_create_context(kbdev, in_compat_syscall(), filp);
 #else
-	kctx = kbase_create_context(kbdev, is_compat_task());
+	kctx = kbase_create_context(kbdev, is_compat_task(), filp);
 #endif /* (KERNEL_VERSION(4, 6, 0) <= LINUX_VERSION_CODE) */
 	if (!kctx) {
 		ret = -ENOMEM;
@@ -418,7 +418,6 @@ static int kbase_open(struct inode *inode, struct file *filp)
 	init_waitqueue_head(&kctx->event_queue);
 	filp->private_data = kctx;
 	filp->f_mode |= FMODE_UNSIGNED_OFFSET;
-	kctx->filp = filp;
 
 	if (kbdev->infinite_cache_active_default)
 		kbase_ctx_flag_set(kctx, KCTX_INFINITE_CACHE);

@@ -39,7 +39,8 @@
 #include <mali_kbase_ctx_sched.h>
 
 struct kbase_context *
-kbase_create_context(struct kbase_device *kbdev, bool is_compat)
+kbase_create_context(struct kbase_device *kbdev, bool is_compat,
+			struct file *filp)
 {
 	struct kbase_context *kctx;
 	int err;
@@ -61,6 +62,7 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 	kbase_disjoint_event(kbdev);
 
 	kctx->kbdev = kbdev;
+	kctx->filp = filp;
 	if (is_compat)
 		kbase_ctx_flag_set(kctx, KCTX_COMPAT);
 #if defined(CONFIG_64BIT)
