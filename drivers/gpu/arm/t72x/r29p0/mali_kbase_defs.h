@@ -2071,6 +2071,8 @@ struct kbase_reg_zone {
  * @priority:             Indicates the context priority. Used along with @atoms_count
  *                        for context scheduling, protected by hwaccess_lock.
  * @atoms_count:          Number of gpu atoms currently in use, per priority
+ * @task:                 Pointer to the task structure of the main thread of
+ *                        the process that created the Kbase context.
  */
 struct kbase_context {
 	struct file *filp;
@@ -2225,6 +2227,8 @@ struct kbase_context {
 
 	int priority;
 	s16 atoms_count[KBASE_JS_ATOM_SCHED_PRIO_COUNT];
+
+	struct task_struct *task;
 
 	/* MALI_SEC_INTEGRATION */
 	bool destroying_context;

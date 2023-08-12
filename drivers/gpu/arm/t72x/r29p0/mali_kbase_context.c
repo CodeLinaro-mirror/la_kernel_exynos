@@ -25,6 +25,12 @@
 /*
  * Base kernel context APIs
  */
+#include <linux/version.h>
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
+#include <linux/sched/task.h>
+#else
+#include <linux/sched.h>
+#endif
 
 #include <mali_kbase.h>
 #include <mali_midg_regmap.h>
@@ -38,6 +44,10 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 	struct kbase_context *kctx;
 	int err;
 	struct page *p;
+
+	struct pid *pid_struct;
+	struct task_struct *task;
+
 
 	KBASE_DEBUG_ASSERT(kbdev != NULL);
 
@@ -66,6 +76,16 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 	kctx->slots_pullable = 0;
 	kctx->tgid = current->tgid;
 	kctx->pid = current->pid;
+
+
+	rcu_read_lock();
+	pid_struct = find_get_pid(kctx->tgid);
+	task = pid_task(pid_struct, PIDTYPE_PID);
+	get_task_struct(task);
+	kctx->task = task;
+	put_pid(pid_struct);
+	rcu_read_unlock();
+
 
 	err = kbase_mem_pool_init(&kctx->mem_pool,
 				  kbdev->mem_pool_max_size_default,
@@ -322,6 +342,9 @@ void kbase_destroy_context(struct kbase_context *kctx)
 	if (kctx->ctx_need_qos) {
 		kctx->ctx_need_qos = false;
 	}
+
+
+	put_task_struct(kctx->task);
 
 	vfree(kctx);
 	/* MALI_SEC_INTEGRATION */
