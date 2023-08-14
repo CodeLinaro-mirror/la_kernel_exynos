@@ -25,6 +25,12 @@
 /*
  * Base kernel context APIs
  */
+#include <linux/version.h>
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
+#include <linux/sched/task.h>
+#else
+#include <linux/sched.h>
+#endif
 
 #include <mali_kbase.h>
 #include <mali_midg_regmap.h>
@@ -33,11 +39,16 @@
 #include <mali_kbase_ctx_sched.h>
 
 struct kbase_context *
-kbase_create_context(struct kbase_device *kbdev, bool is_compat)
+kbase_create_context(struct kbase_device *kbdev, bool is_compat,
+			struct file *filp)
 {
 	struct kbase_context *kctx;
 	int err;
 	struct page *p;
+
+	struct pid *pid_struct;
+	struct task_struct *task;
+
 
 	KBASE_DEBUG_ASSERT(kbdev != NULL);
 
@@ -51,6 +62,7 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 	kbase_disjoint_event(kbdev);
 
 	kctx->kbdev = kbdev;
+	kctx->filp = filp;
 	if (is_compat)
 		kbase_ctx_flag_set(kctx, KCTX_COMPAT);
 #if defined(CONFIG_64BIT)
@@ -60,12 +72,28 @@ kbase_create_context(struct kbase_device *kbdev, bool is_compat)
 
 	atomic_set(&kctx->setup_complete, 0);
 	atomic_set(&kctx->setup_in_progress, 0);
-	spin_lock_init(&kctx->mm_update_lock);
 	kctx->process_mm = NULL;
 	atomic_set(&kctx->nonmapped_pages, 0);
 	kctx->slots_pullable = 0;
 	kctx->tgid = current->tgid;
 	kctx->pid = current->pid;
+
+	/* Check if this is a Userspace created context */
+	if (likely(kctx->filp)) {
+		rcu_read_lock();
+		pid_struct = find_get_pid(kctx->tgid);
+		task = pid_task(pid_struct, PIDTYPE_PID);
+		get_task_struct(task);
+		kctx->task = task;
+		put_pid(pid_struct);
+		rcu_read_unlock();
+		/* This merely takes a reference on the mm_struct and not on the
+		 * address space and so won't block the freeing of address space
+		 * on process exit.
+		 */
+		mmgrab(current->mm);
+		kctx->process_mm = current->mm;
+	}
 
 	err = kbase_mem_pool_init(&kctx->mem_pool,
 				  kbdev->mem_pool_max_size_default,
@@ -321,6 +349,11 @@ void kbase_destroy_context(struct kbase_context *kctx)
 
 	if (kctx->ctx_need_qos) {
 		kctx->ctx_need_qos = false;
+	}
+
+	if (likely(kctx->filp)) {
+		mmdrop(kctx->process_mm);
+		put_task_struct(kctx->task);
 	}
 
 	vfree(kctx);

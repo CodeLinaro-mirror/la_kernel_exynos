@@ -29,13 +29,16 @@
  * kbase_create_context() - Create a kernel base context.
  * @kbdev: Kbase device
  * @is_compat: Force creation of a 32-bit context
+ * @filp: Pointer to the struct file corresponding to device file /dev/malixx
+ *        instance, passed to the file's open method.
  *
  * Allocate and init a kernel base context.
  *
  * Return: new kbase context
  */
 struct kbase_context *
-kbase_create_context(struct kbase_device *kbdev, bool is_compat);
+kbase_create_context(struct kbase_device *kbdev, bool is_compat,
+		     struct file *filp);
 
 /**
  * kbase_destroy_context - Destroy a kernel base context.

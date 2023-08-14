@@ -1974,7 +1974,11 @@ struct kbase_reg_zone {
  * @process_mm:           Pointer to the memory descriptor of the process which
  *                        created the context. Used for accounting the physical
  *                        pages used for GPU allocations, done for the context,
- *                        to the memory consumed by the process.
+ *                        to the memory consumed by the process. A reference is
+ *                        taken on this descriptor for the Userspace created
+ *                        contexts so that Kbase can safely access it to update
+ *                        the memory usage counters. The reference is dropped on
+ *                        context termination.
  * @gpu_va_end:           End address of the GPU va space (in 4KB page units)
  * @jit_va:               Indicates if a JIT_VA zone has been created.
  * @timeline:             Object tracking the number of atoms currently in flight for
@@ -2071,6 +2075,8 @@ struct kbase_reg_zone {
  * @priority:             Indicates the context priority. Used along with @atoms_count
  *                        for context scheduling, protected by hwaccess_lock.
  * @atoms_count:          Number of gpu atoms currently in use, per priority
+ * @task:                 Pointer to the task structure of the main thread of
+ *                        the process that created the Kbase context.
  */
 struct kbase_context {
 	struct file *filp;
@@ -2136,14 +2142,7 @@ struct kbase_context {
 	atomic_t refcount;
 
 
-	/* NOTE:
-	 *
-	 * Flags are in jctx.sched_info.ctx.flags
-	 * Mutable flags *must* be accessed under jctx.sched_info.ctx.jsctx_mutex
-	 *
-	 * All other flags must be added there */
-	spinlock_t         mm_update_lock;
-	struct mm_struct __rcu *process_mm;
+	struct mm_struct *process_mm;
 	u64 gpu_va_end;
 	bool jit_va;
 
@@ -2225,6 +2224,8 @@ struct kbase_context {
 
 	int priority;
 	s16 atoms_count[KBASE_JS_ATOM_SCHED_PRIO_COUNT];
+
+	struct task_struct *task;
 
 	/* MALI_SEC_INTEGRATION */
 	bool destroying_context;
