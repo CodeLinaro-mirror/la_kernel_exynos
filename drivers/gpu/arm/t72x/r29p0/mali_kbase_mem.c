@@ -1593,6 +1593,7 @@ void kbase_sync_single(struct kbase_context *kctx,
 			src = ((unsigned char *)kmap(gpu_page)) + offset;
 			dst = ((unsigned char *)kmap(cpu_page)) + offset;
 		}
+
 		memcpy(dst, src, size);
 		kunmap(gpu_page);
 		kunmap(cpu_page);
@@ -3567,8 +3568,6 @@ static int kbase_jd_user_buf_map(struct kbase_context *kctx,
 	unsigned long address;
 	struct mm_struct *mm;
 	struct device *dev;
-	unsigned long offset_within_page;
-	unsigned long remaining_size;
 	unsigned long gwt_mask = ~0;
 	int write;
 
@@ -3616,25 +3615,22 @@ static int kbase_jd_user_buf_map(struct kbase_context *kctx,
 	}
 
 	dev = kctx->kbdev->dev;
-	offset_within_page = address & ~PAGE_MASK;
-	remaining_size = alloc->imported.user_buf.size;
 
 	for (i = 0; i < pinned_pages; i++) {
-		unsigned long map_size =
-			MIN(PAGE_SIZE - offset_within_page, remaining_size);
-		dma_addr_t dma_addr = dma_map_page(dev, pages[i],
-				offset_within_page, map_size,
+		dma_addr_t dma_addr;
+#if (KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE)
+		dma_addr = dma_map_page(dev, pages[i], 0, PAGE_SIZE,
 				DMA_BIDIRECTIONAL);
-
+#else
+		dma_addr = dma_map_page_attrs(dev, pages[i], 0, PAGE_SIZE,
+				DMA_BIDIRECTIONAL, DMA_ATTR_SKIP_CPU_SYNC);
+#endif
 		err = dma_mapping_error(dev, dma_addr);
 		if (err)
 			goto unwind;
 
 		alloc->imported.user_buf.dma_addrs[i] = dma_addr;
 		pa[i] = as_tagged(page_to_phys(pages[i]));
-
-		remaining_size -= map_size;
-		offset_within_page = 0;
 	}
 
 	alloc->nents = pinned_pages;
@@ -3653,19 +3649,19 @@ static int kbase_jd_user_buf_map(struct kbase_context *kctx,
 	/* fall down */
 unwind:
 	alloc->nents = 0;
-	offset_within_page = address & ~PAGE_MASK;
-	remaining_size = alloc->imported.user_buf.size;
 	dma_mapped_pages = i;
 	/* Run the unmap loop in the same order as map loop */
 	for (i = 0; i < dma_mapped_pages; i++) {
-		unsigned long unmap_size =
-			MIN(PAGE_SIZE - offset_within_page, remaining_size);
-
+#if (KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE)
 		dma_unmap_page(kctx->kbdev->dev,
 				alloc->imported.user_buf.dma_addrs[i],
-				unmap_size, DMA_BIDIRECTIONAL);
-		remaining_size -= unmap_size;
-		offset_within_page = 0;
+				PAGE_SIZE, DMA_BIDIRECTIONAL);
+#else
+		dma_unmap_page_attrs(kctx->kbdev->dev,
+				alloc->imported.user_buf.dma_addrs[i],
+				PAGE_SIZE, DMA_BIDIRECTIONAL,
+				DMA_ATTR_SKIP_CPU_SYNC);
+#endif
 	}
 
 	/* The user buffer could already have been previously pinned before
@@ -3688,9 +3684,6 @@ static void kbase_jd_user_buf_unmap(struct kbase_context *kctx,
 {
 	long i;
 	struct page **pages;
-	unsigned long offset_within_page =
-				alloc->imported.user_buf.address & ~PAGE_MASK;
-	unsigned long remaining_size = alloc->imported.user_buf.size;
 
 	lockdep_assert_held(&kctx->reg_lock);
 
@@ -3700,19 +3693,19 @@ static void kbase_jd_user_buf_unmap(struct kbase_context *kctx,
 	kbase_mem_shrink_cpu_mapping(kctx, reg, 0, alloc->nents);
 
 	for (i = 0; i < alloc->imported.user_buf.nr_pages; i++) {
-		unsigned long unmap_size =
-			MIN(remaining_size, PAGE_SIZE - offset_within_page);
 		dma_addr_t dma_addr = alloc->imported.user_buf.dma_addrs[i];
 
-		dma_unmap_page(kctx->kbdev->dev, dma_addr, unmap_size,
+#if (KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE)
+		dma_unmap_page(kctx->kbdev->dev, dma_addr, PAGE_SIZE,
 				DMA_BIDIRECTIONAL);
+#else
+		dma_unmap_page_attrs(kctx->kbdev->dev, dma_addr, PAGE_SIZE,
+				DMA_BIDIRECTIONAL, DMA_ATTR_SKIP_CPU_SYNC);
+#endif
 		if (writeable)
 			set_page_dirty_lock(pages[i]);
 		put_page(pages[i]);
 		pages[i] = NULL;
-
-		remaining_size -= unmap_size;
-		offset_within_page = 0;
 	}
 	alloc->nents = 0;
 }

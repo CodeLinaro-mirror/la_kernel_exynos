@@ -182,7 +182,6 @@ struct kbase_mem_phy_alloc {
 		} native;
 		struct kbase_alloc_import_user_buf {
 			unsigned long address;
-			unsigned long size;
 			unsigned long nr_pages;
 			struct page **pages;
 			/* top bit (1<<31) of current_mapping_usage_count
