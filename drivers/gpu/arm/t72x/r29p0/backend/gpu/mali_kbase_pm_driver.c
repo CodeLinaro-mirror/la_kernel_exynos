@@ -903,7 +903,11 @@ static void kbase_pm_shaders_update_state(struct kbase_device *kbdev)
 
 		case KBASE_SHADERS_WAIT_FINISHED_CORESTACK_ON:
 			shader_poweroff_timer_queue_cancel(kbdev);
+			backend->shaders_state =
+				KBASE_SHADERS_READY_OFF_CORESTACK_ON;
+			break;
 
+		case KBASE_SHADERS_READY_OFF_CORESTACK_ON:
 			if (!platform_power_down_only)
 				kbase_pm_invoke(kbdev, KBASE_PM_CORE_SHADER,
 						shaders_ready, ACTION_PWROFF);

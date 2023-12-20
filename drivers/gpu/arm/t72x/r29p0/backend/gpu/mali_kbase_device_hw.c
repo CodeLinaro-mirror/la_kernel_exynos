@@ -337,15 +337,24 @@ void kbase_gpu_interrupt(struct kbase_device *kbdev, u32 val)
 	if (val & CLEAN_CACHES_COMPLETED)
 		kbase_clean_caches_done(kbdev);
 
-	/* When 'platform_power_down_only' is enabled, the L2 cache is not
-	 * powered down, but flushed before the GPU power down (which is done
-	 * by the platform code). So the L2 state machine requests a cache
-	 * flush. And when that flush completes, the L2 state machine needs to
-	 * be re-invoked to proceed with the GPU power down.
-	 */
-	if (val & POWER_CHANGED_ALL ||
-			(platform_power_down_only && (val & CLEAN_CACHES_COMPLETED)))
+	if (val & POWER_CHANGED_ALL) {
 		kbase_pm_power_changed(kbdev);
+	} else if (val & CLEAN_CACHES_COMPLETED) {
+		/* When 'platform_power_down_only' is enabled, the L2 cache is
+		 * not powered down, but flushed before the GPU power down
+		 * (which is done by the platform code). So the L2 state machine
+		 * requests a cache flush. And when that flush completes, the L2
+		 * state machine needs to be re-invoked to proceed with the GPU
+		 * power down.
+		 * If cache line evict messages can be lost when shader cores
+		 * power down then we need to flush the L2 cache before powering
+		 * down cores. When the flush completes, the shaders' state
+		 * machine needs to be re-invoked to proceed with powering down
+		 * cores.
+		 */
+		if (platform_power_down_only)
+			kbase_pm_power_changed(kbdev);
+	}
 
 	KBASE_TRACE_ADD(kbdev, CORE_GPU_IRQ_DONE, NULL, NULL, 0u, val);
 }

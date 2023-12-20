@@ -108,6 +108,8 @@ enum kbase_l2_core_state {
  *                                       power off, but they remain on for the
  *                                       duration of the hysteresis timer
  * @KBASE_SHADERS_WAIT_FINISHED_CORESTACK_ON: The hysteresis timer has expired
+ * @KBASE_SHADERS_READY_OFF_CORESTACK_ON: The core stacks are on and the shaders
+ *                                         are ready to be powered off.
  * @KBASE_SHADERS_PEND_OFF_CORESTACK_ON: The core stacks are on, and the shaders
  *                                       have been requested to power off
  * @KBASE_SHADERS_OFF_CORESTACK_PEND_OFF: The shaders are off, and the core stacks
@@ -127,6 +129,7 @@ enum kbase_shader_core_state {
 	KBASE_SHADERS_ON_CORESTACK_ON_RECHECK,
 	KBASE_SHADERS_WAIT_OFF_CORESTACK_ON,
 	KBASE_SHADERS_WAIT_FINISHED_CORESTACK_ON,
+	KBASE_SHADERS_READY_OFF_CORESTACK_ON,
 	KBASE_SHADERS_PEND_OFF_CORESTACK_ON,
 	KBASE_SHADERS_OFF_CORESTACK_PEND_OFF,
 	KBASE_SHADERS_OFF_CORESTACK_OFF_TIMER_PEND_OFF,
