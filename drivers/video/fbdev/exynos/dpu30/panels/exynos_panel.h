@@ -106,12 +106,6 @@ struct exynos_panel_info {
 	unsigned int width;
 	unsigned int height;
 
-	/* high brightness mode */
-	unsigned int hbm_min_level;
-	unsigned int hbm_max_level;
-	unsigned int transition_point;
-	bool is_hbm_on;
-
 	unsigned int hs_clk;
 	struct stdphy_pms dphy_pms;
 	unsigned int esc_clk;
