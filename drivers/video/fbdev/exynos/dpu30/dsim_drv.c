@@ -1573,20 +1573,6 @@ static ssize_t dsim_cmd_sysfs_store(struct device *dev,
 }
 static DEVICE_ATTR(cmd_rw, 0644, dsim_cmd_sysfs_show, dsim_cmd_sysfs_store);
 
-static ssize_t panel_name_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct dsim_device *dsim = dev_get_drvdata(dev);
-	const char *name = dsim->panel->lcd_info.panel_name;
-
-	if (name == NULL)
-		return 0;
-
-	return (ssize_t)scnprintf(buf, PAGE_SIZE, "%s", name);
-}
-
-static DEVICE_ATTR_RO(panel_name);
-
 static ssize_t dsim_ddi_addr_sysfs_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1778,12 +1764,6 @@ int dsim_create_cmd_rw_sysfs(struct dsim_device *dsim)
 	ret = device_create_file(dsim->dev, &dev_attr_cmd_rw);
 	if (ret) {
 		dsim_err("failed to create command read & write sysfs\n");
-		goto error;
-	}
-
-	ret = device_create_file(dsim->dev, &dev_attr_panel_name);
-	if (ret) {
-		dsim_err("failed to create panel name sysfs\n");
 		goto error;
 	}
 
