@@ -409,7 +409,6 @@ static int wf012fbm_set_light(struct exynos_panel_device *panel, u32 br_val)
 {
 	u8 interactive_brightness;
 	u8 aod_brightness;
-	u8 hbm_brightness;
 	struct dsim_device *dsim = get_dsim_drvdata(0);
 	/*
 	 * Only set brightness if it's not currently in doze mode as AP
@@ -421,48 +420,20 @@ static int wf012fbm_set_light(struct exynos_panel_device *panel, u32 br_val)
 	 * display brightness during doze (150 nits range). Thus, this
 	 * function would do nothing if the device is currently in doze.
 	 */
-	if (dsim->state == DSIM_STATE_DOZE) {
-		DPU_INFO_PANEL("%s: skip doze br=%d\n", __func__, br_val);
-		return 0;
-	}
-
-	mutex_lock(&panel->ops_lock);
-
-	/* Page select */
-	dsim_write_data_seq(dsim, false, 0xff, 0x10);
-
-	if (br_val <= panel->lcd_info.transition_point) {
+	if (dsim->state != DSIM_STATE_DOZE) {
+		mutex_lock(&panel->ops_lock);
+		/* WRDISBV(8bit): 1st DBV[7:0] */
 		interactive_brightness = br_val & 0xFF;
 		aod_brightness =
 			interactive_to_aod_brightness(interactive_brightness);
 		dsim_write_data_seq(dsim, false, 0x51, interactive_brightness);
 		dsim_write_data_seq(dsim, false, 0x61, aod_brightness);
-
-		if (panel->lcd_info.is_hbm_on) {
-			dsim_write_data_seq(dsim, false, 0x66, 0x00);
-			panel->lcd_info.is_hbm_on = false;
-		}
-
+		mutex_unlock(&panel->ops_lock);
 		DPU_INFO_PANEL("%s: set brightness (i=%d, aod=%d)\n", __func__,
-			interactive_brightness, aod_brightness);
+			       interactive_brightness, aod_brightness);
 	} else {
-		hbm_brightness =
-			(br_val - panel->lcd_info.transition_point - 1) +
-			panel->lcd_info.hbm_min_level;
-
-		/* Set HBM brightness */
-		dsim_write_data_seq(dsim, false, 0x63, hbm_brightness);
-
-		if (!panel->lcd_info.is_hbm_on) {
-			/* Enter High Brightness Mode */
-			dsim_write_data_seq(dsim, false, 0x66, 0x02);
-			panel->lcd_info.is_hbm_on = true;
-		}
-
-		DPU_INFO_PANEL("%s: set hbm on, brightness (i=%u)\n", __func__, br_val);
+		DPU_INFO_PANEL("%s: skip doze br=%d\n", __func__, br_val);
 	}
-
-	mutex_unlock(&panel->ops_lock);
 	return 0;
 }
 

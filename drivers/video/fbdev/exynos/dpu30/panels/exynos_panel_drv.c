@@ -591,10 +591,8 @@ static void exynos_panel_parse_lcd_info(struct exynos_panel_device *panel,
 	u32 res[2];
 	struct exynos_panel_info *lcd_info = &panel->lcd_info;
 	u32 max_br, dft_br, eotp_disabled;
-	u32 rc, hbm_min_level, hbm_max_level;
 	u32 underrun_max_num = 0;
 
-	of_property_read_string(np, "panel_name", &lcd_info->panel_name);
 	of_property_read_u32(np, "mode", &lcd_info->mode);
 	of_property_read_u32_array(np, "resolution", res, 2);
 	lcd_info->xres = res[0];
@@ -622,29 +620,11 @@ static void exynos_panel_parse_lcd_info(struct exynos_panel_device *panel,
 	panel->bl->props.brightness = DEFAULT_BRIGHTNESS;
 	if (!of_property_read_u32(np, "max-brightness", &max_br))
 		panel->bl->props.max_brightness = max_br;
-	if (!of_property_read_u32(np, "default-brightness", &dft_br))
+	if (!of_property_read_u32(np, "dft-brightness", &dft_br))
 		panel->bl->props.brightness = dft_br;
 
 	DPU_INFO_PANEL("max brightness : %d\n", panel->bl->props.max_brightness);
 	DPU_INFO_PANEL("default brightness : %d\n", panel->bl->props.brightness);
-
-	rc = of_property_read_u32(np, "hbm-min-level", &hbm_min_level);
-	rc |= of_property_read_u32(np, "hbm-max-level", &hbm_max_level);
-	if (rc) {
-		lcd_info->transition_point = panel->bl->props.max_brightness;
-		DPU_INFO_PANEL("hbm bl range is not supported\n");
-	} else {
-		lcd_info->hbm_min_level = hbm_min_level;
-		lcd_info->hbm_max_level = hbm_max_level;
-		lcd_info->transition_point =
-			panel->bl->props.max_brightness -
-			(hbm_max_level - hbm_min_level + 1);
-
-		DPU_INFO_PANEL(
-			"hbm bl range enabled, hbm_min=%d, hbm_max=%d, trans_pt=%d\n",
-			lcd_info->hbm_min_level, lcd_info->hbm_max_level,
-			lcd_info->transition_point);
-	}
 
 	exynos_panel_get_timing_info(lcd_info, np);
 	exynos_panel_get_dsc_info(lcd_info, np);
