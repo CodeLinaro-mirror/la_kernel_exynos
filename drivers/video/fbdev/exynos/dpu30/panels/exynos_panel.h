@@ -88,6 +88,7 @@ struct exynos_dsc {
 
 struct exynos_panel_info {
 	unsigned int id; /* panel id. It is used for finding connected panel */
+	const char *panel_name;
 	enum decon_psr_mode mode;
 
 	unsigned int vfp;

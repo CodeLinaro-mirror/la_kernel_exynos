@@ -593,6 +593,7 @@ static void exynos_panel_parse_lcd_info(struct exynos_panel_device *panel,
 	u32 max_br, dft_br, eotp_disabled;
 	u32 underrun_max_num = 0;
 
+	of_property_read_string(np, "panel_name", &lcd_info->panel_name);
 	of_property_read_u32(np, "mode", &lcd_info->mode);
 	of_property_read_u32_array(np, "resolution", res, 2);
 	lcd_info->xres = res[0];
