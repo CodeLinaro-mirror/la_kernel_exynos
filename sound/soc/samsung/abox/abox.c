@@ -6264,9 +6264,7 @@ void abox_poweroff(void)
 static int abox_runtime_suspend(struct device *dev)
 {
 	dev_dbg(dev, "%s\n", __func__);
-
-	p_abox_data->enabled = false;
-
+	/* nothing to do */
 	return 0;
 }
 
@@ -6484,6 +6482,7 @@ static int abox_pm_notifier(struct notifier_block *nb,
 				return NOTIFY_BAD;
 			}
 			atomic_set(&data->suspend_state, 1);
+			data->enabled = false;
 			dev_info(dev, "(%d)s suspend_state: %d\n", __LINE__,
 					atomic_read(&data->suspend_state));
 		} else {

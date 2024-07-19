@@ -185,6 +185,7 @@ static int __exynos_pd_power_off(struct exynos_pm_domain *pd)
 {
 	int ret = 0;
 	ktime_t now;
+	bool retry_power_down = true;
 
 	pr_debug("pd_power_off:(%s)+\n", pd->name);
 
@@ -205,10 +206,17 @@ static int __exynos_pd_power_off(struct exynos_pm_domain *pd)
 		goto acc_unlock;
 	}
 
-	if (pd->power_down_ok && !pd->power_down_ok()) {
-		pr_info("%s power-off is skipped.\n", pd->name);
-		pd->power_down_skipped = true;
-		goto acc_unlock;
+	while (pd->power_down_ok && !pd->power_down_ok()) {
+		// One chance only to retry powering down.
+		if (retry_power_down) {
+			pr_info("%s power-off is retried.\n", pd->name);
+			retry_power_down = false;
+			usleep_range(10000, 15000);
+		} else {
+			pr_info("%s power-off is skipped.\n", pd->name);
+			pd->power_down_skipped = true;
+			goto acc_unlock;
+		}
 	}
 
 	if (!cal_pd_status(pd->cal_pdid)) {
