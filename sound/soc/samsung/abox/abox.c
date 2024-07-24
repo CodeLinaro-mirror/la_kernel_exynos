@@ -6477,6 +6477,12 @@ static int abox_pm_notifier(struct notifier_block *nb,
 			flush_workqueue(data->ipc_workqueue);
 			ret = pm_runtime_suspend(dev);
 			if (ret < 0) {
+				/*
+				If abox_test_quirk ABOX_QUIRK_OFF_ON_SUSPEND,
+				need to call pm_runtime_get to keep power usage in sync.
+				*/
+				if (abox_test_quirk(data, ABOX_QUIRK_OFF_ON_SUSPEND))
+					pm_runtime_get(dev);
 				dev_err(dev, "runtime suspend: %d\n", ret);
 				abox_print_power_usage(dev, NULL);
 				return NOTIFY_BAD;
